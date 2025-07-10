@@ -11,8 +11,9 @@ dotenv.config();
 
 const app = express();
 
-// Trust proxy for Vercel deployment
-app.set('trust proxy', true);
+// Trust proxy for Vercel deployment - more secure configuration
+// Trust only the first proxy (Vercel's proxy)
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -23,23 +24,39 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
+// Rate limiting with secure proxy configuration
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
   message: {
     error: 'Too many requests from this IP, please try again later.'
+  },
+  // Secure configuration for proxy environment
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  // Custom key generator for better security in proxy environment
+  keyGenerator: (req) => {
+    // Use the real IP from trusted proxy headers
+    return req.ip || req.connection.remoteAddress || 'unknown';
   }
 });
 app.use('/api/', limiter);
 
-// Auth rate limiting (stricter)
+// Auth rate limiting (stricter) with enhanced security
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // Limit each IP to 5 auth requests per windowMs
   message: {
     error: 'Too many authentication attempts, please try again later.'
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  // More restrictive for auth endpoints
+  keyGenerator: (req) => {
+    return req.ip || req.connection.remoteAddress || 'unknown';
+  },
+  // Skip successful requests for auth endpoints
+  skipSuccessfulRequests: true
 });
 
 // Swagger configuration
