@@ -11,6 +11,9 @@ dotenv.config();
 
 const app = express();
 
+// Trust proxy for Vercel deployment
+app.set('trust proxy', true);
+
 // Middleware
 app.use(helmet()); // Security headers
 app.use(cors({
@@ -183,7 +186,14 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     database: process.env.DATABASE_URL ? 'configured' : 'not configured',
-    jwt: process.env.JWT_SECRET ? 'configured' : 'not configured'
+    jwt: process.env.JWT_SECRET ? 'configured' : 'not configured',
+    // Debug info for troubleshooting
+    debug: {
+      databaseUrlLength: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0,
+      databaseUrlPrefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 15) + '...' : 'not set',
+      nodeEnv: process.env.NODE_ENV,
+      vercelUrl: process.env.VERCEL_URL || 'not set'
+    }
   });
 });
 
