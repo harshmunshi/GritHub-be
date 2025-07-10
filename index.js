@@ -121,15 +121,68 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Serve Swagger UI
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'GymTracker API Documentation',
-  swaggerOptions: {
-    persistAuthorization: true,
-    tryItOutEnabled: true
-  }
-}));
+// Serve Swagger UI with better Vercel compatibility
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', (req, res) => {
+  res.send(swaggerUi.generateHTML(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'GymTracker API Documentation',
+    swaggerOptions: {
+      persistAuthorization: true,
+      tryItOutEnabled: true,
+      url: null, // Prevent external URL loading
+      dom_id: '#swagger-ui',
+      presets: [
+        'SwaggerUIBundle.presets.apis',
+        'SwaggerUIStandalonePreset'
+      ]
+    }
+  }));
+});
+
+// Also serve at the root /api-docs/ path
+app.get('/api-docs/', (req, res) => {
+  res.send(swaggerUi.generateHTML(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'GymTracker API Documentation',
+    swaggerOptions: {
+      persistAuthorization: true,
+      tryItOutEnabled: true,
+      url: null
+    }
+  }));
+});
+
+// Swagger JSON spec endpoint
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
+// Simple docs fallback
+app.get('/docs', (req, res) => {
+  res.send(`
+    <html>
+      <head><title>GymTracker API Documentation</title></head>
+      <body style="font-family: Arial, sans-serif; padding: 20px;">
+        <h1>GymTracker API Documentation</h1>
+        <p>API documentation is available at the following endpoints:</p>
+        <ul>
+          <li><a href="/api-docs/">/api-docs/</a> - Interactive Swagger UI</li>
+          <li><a href="/api-docs.json">/api-docs.json</a> - OpenAPI JSON spec</li>
+          <li><a href="/health">/health</a> - Health check</li>
+        </ul>
+        <h2>Available Endpoints:</h2>
+        <ul>
+          <li><strong>Authentication:</strong> /api/auth/*</li>
+          <li><strong>Users:</strong> /api/users/*</li>
+          <li><strong>Gym Visits:</strong> /api/gym-visits/*</li>
+          <li><strong>Groups:</strong> /api/groups/*</li>
+        </ul>
+      </body>
+    </html>
+  `);
+});
 
 // Routes
 app.use('/api/auth', authLimiter);
