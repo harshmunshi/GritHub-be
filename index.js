@@ -5,7 +5,6 @@ const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
-const pool = require('./db'); // Import database connection
 
 // Load environment variables
 dotenv.config();
@@ -132,17 +131,22 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // Routes
 app.use('/api/auth', authLimiter);
 
-// Import route modules
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const gymVisitRoutes = require('./routes/gym-visits');
-const groupRoutes = require('./routes/groups');
+// Import route modules with error handling
+try {
+  const authRoutes = require('./routes/auth');
+  const userRoutes = require('./routes/users');
+  const gymVisitRoutes = require('./routes/gym-visits');
+  const groupRoutes = require('./routes/groups');
 
-// Use routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/gym-visits', gymVisitRoutes);
-app.use('/api/groups', groupRoutes);
+  // Use routes
+  app.use('/api/auth', authRoutes);
+  app.use('/api/users', userRoutes);
+  app.use('/api/gym-visits', gymVisitRoutes);
+  app.use('/api/groups', groupRoutes);
+} catch (error) {
+  console.error('❌ Error loading routes:', error.message);
+  // Continue without routes if there's an error
+}
 
 /**
  * @swagger
@@ -177,7 +181,9 @@ app.get('/health', (req, res) => {
     status: 'OK',
     message: 'GymTracker API is running on Vercel',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    database: process.env.DATABASE_URL ? 'configured' : 'not configured',
+    jwt: process.env.JWT_SECRET ? 'configured' : 'not configured'
   });
 });
 
@@ -220,7 +226,9 @@ app.get('/', (req, res) => {
       users: '/api/users',
       gymVisits: '/api/gym-visits',
       groups: '/api/groups'
-    }
+    },
+    status: 'running',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -228,7 +236,15 @@ app.get('/', (req, res) => {
 app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Endpoint not found',
-    message: `The requested endpoint ${req.originalUrl} does not exist.`
+    message: `The requested endpoint ${req.originalUrl} does not exist.`,
+    availableEndpoints: {
+      health: '/health',
+      docs: '/api-docs',
+      auth: '/api/auth',
+      users: '/api/users',
+      gymVisits: '/api/gym-visits',
+      groups: '/api/groups'
+    }
   });
 });
 
@@ -276,5 +292,5 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Export the app for Vercel
+// Export for serverless deployment
 module.exports = app; 
