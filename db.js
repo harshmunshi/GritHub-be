@@ -11,10 +11,14 @@ if (process.env.DATABASE_URL) {
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    // Serverless-friendly settings
+    // Improved serverless-friendly settings for Neon
     max: 1, // Limit connections for serverless
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 30000, // Increased timeout for Neon
+    acquireTimeoutMillis: 30000, // Time to wait for connection from pool
+    // Neon-specific optimizations
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
   });
 } else {
   console.error('❌ DATABASE_URL environment variable is not set');
