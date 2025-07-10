@@ -1,6 +1,7 @@
 # GymTracker Backend API
 
 A Node.js Express API server for the GymTracker iOS app, using NeonDB (PostgreSQL) for data storage.
+This will be connected (optionally) with Vercel.
 
 ## 🚀 Quick Start
 
