@@ -882,7 +882,9 @@ router.post('/password/reset-request', [
       message: 'If an account with this email exists, a password reset link has been sent.',
       // REMOVE THE BELOW IN PRODUCTION - THIS IS FOR TESTING ONLY
       resetToken: resetToken,
-      resetUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`
+      resetUrl: process.env.FRONTEND_URL 
+        ? `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
+        : `gymtracker://reset-password?token=${resetToken}` // Deep link for mobile app
     });
 
   } catch (error) {

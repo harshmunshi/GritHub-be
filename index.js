@@ -18,7 +18,15 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(helmet()); // Security headers
 app.use(cors({
-  origin: ['http://localhost:3000', 'capacitor://localhost', 'http://localhost', process.env.FRONTEND_URL || '*'],
+  origin: [
+    'http://localhost:3000', 
+    'capacitor://localhost', 
+    'http://localhost',
+    'capacitor://grithub-be.vercel.app',
+    'https://grithub-be.vercel.app',
+    // Add your iOS app scheme here if you have one (e.g., 'gymtracker://')
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
+  ],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -159,44 +167,139 @@ const swaggerOptions = {
   ]
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
-
-// Serve Swagger UI with better Vercel compatibility
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', (req, res) => {
-  res.send(swaggerUi.generateHTML(swaggerSpec, {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'GymTracker API Documentation',
-    swaggerOptions: {
-      persistAuthorization: true,
-      tryItOutEnabled: true,
-      url: null, // Prevent external URL loading
-      dom_id: '#swagger-ui',
-      presets: [
-        'SwaggerUIBundle.presets.apis',
-        'SwaggerUIStandalonePreset'
-      ]
+// Generate swagger spec with error handling
+let swaggerSpec;
+try {
+  swaggerSpec = swaggerJsdoc(swaggerOptions);
+  console.log('✅ Swagger spec generated successfully');
+} catch (error) {
+  console.error('❌ Error generating swagger spec:', error.message);
+  // Fallback minimal spec
+  swaggerSpec = {
+    openapi: '3.0.0',
+    info: {
+      title: 'GymTracker API',
+      version: '1.0.0',
+      description: 'A comprehensive API for the GymTracker iOS app (minimal spec due to loading error)'
+    },
+    servers: [
+      {
+        url: 'https://grithub-be.vercel.app',
+        description: 'Production server'
+      }
+    ],
+    paths: {
+      '/health': {
+        get: {
+          summary: 'Health check',
+          tags: ['Health'],
+          responses: {
+            '200': {
+              description: 'API is healthy'
+            }
+          }
+        }
+      }
     }
-  }));
+  };
+}
+
+// Serve Swagger UI with CDN assets for better Vercel compatibility
+app.get('/api-docs', (req, res) => {
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <title>GymTracker API Documentation</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+        <link rel="icon" type="image/png" href="https://unpkg.com/swagger-ui-dist@4.15.5/favicon-32x32.png" sizes="32x32" />
+        <style>
+          html { box-sizing: border-box; overflow: -moz-scrollbars-vertical; overflow-y: scroll; }
+          *, *:before, *:after { box-sizing: inherit; }
+          body { margin:0; background: #fafafa; }
+          .swagger-ui .topbar { display: none; }
+        </style>
+      </head>
+      <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
+        <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
+        <script>
+          window.onload = function() {
+            const ui = SwaggerUIBundle({
+              url: '/api-docs.json',
+              dom_id: '#swagger-ui',
+              deepLinking: true,
+              presets: [
+                SwaggerUIBundle.presets.apis,
+                SwaggerUIStandalonePreset
+              ],
+              plugins: [
+                SwaggerUIBundle.plugins.DownloadUrl
+              ],
+              layout: "StandaloneLayout",
+              tryItOutEnabled: true,
+              persistAuthorization: true,
+              displayRequestDuration: true,
+              docExpansion: "list",
+              filter: true,
+              showExtensions: true,
+              showCommonExtensions: true
+            });
+          };
+        </script>
+      </body>
+    </html>
+  `;
+  
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
 });
 
 // Also serve at the root /api-docs/ path
 app.get('/api-docs/', (req, res) => {
-  res.send(swaggerUi.generateHTML(swaggerSpec, {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'GymTracker API Documentation',
-    swaggerOptions: {
-      persistAuthorization: true,
-      tryItOutEnabled: true,
-      url: null
-    }
-  }));
+  res.redirect('/api-docs');
+});
+
+// Handle favicon request
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // No content response for favicon
 });
 
 // Swagger JSON spec endpoint
 app.get('/api-docs.json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+  try {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(swaggerSpec);
+  } catch (error) {
+    console.error('Error serving swagger spec:', error);
+    res.status(500).json({
+      error: 'Failed to generate API documentation',
+      message: 'There was an error generating the Swagger specification.'
+    });
+  }
+});
+
+// Debug swagger spec generation
+app.get('/debug/swagger', (req, res) => {
+  try {
+    const spec = swaggerJsdoc(swaggerOptions);
+    res.json({
+      success: true,
+      message: 'Swagger spec generated successfully',
+      pathCount: Object.keys(spec.paths || {}).length,
+      info: spec.info,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Fallback manual swagger spec for debugging
@@ -250,19 +353,23 @@ app.get('/api-docs-simple', (req, res) => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>GymTracker API Documentation</title>
-        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui.css" />
+        <title>GymTracker API Documentation (Simple)</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+        <style>
+          .swagger-ui .topbar { display: none; }
+        </style>
       </head>
       <body>
         <div id="swagger-ui"></div>
-        <script src="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui-bundle.js"></script>
+        <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
+        <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
         <script>
           SwaggerUIBundle({
             url: '/api-docs-simple.json',
             dom_id: '#swagger-ui',
             presets: [
               SwaggerUIBundle.presets.apis,
-              SwaggerUIBundle.presets.standalone
+              SwaggerUIStandalonePreset
             ]
           });
         </script>
@@ -364,6 +471,42 @@ app.get('/debug/routes', (req, res) => {
     routesLoaded: routesLoaded,
     environment: process.env.NODE_ENV,
     timestamp: new Date().toISOString()
+  });
+});
+
+// Comprehensive status endpoint
+app.get('/debug/status', (req, res) => {
+  res.json({
+    api: {
+      name: 'GymTracker API',
+      version: '1.0.0',
+      status: 'running',
+      timestamp: new Date().toISOString()
+    },
+    environment: {
+      nodeEnv: process.env.NODE_ENV,
+      databaseConfigured: !!process.env.DATABASE_URL,
+      jwtConfigured: !!process.env.JWT_SECRET,
+      vercelUrl: process.env.VERCEL_URL || 'not set'
+    },
+    routes: {
+      loaded: routesLoaded,
+      totalLoaded: Object.values(routesLoaded).filter(Boolean).length,
+      totalExpected: Object.keys(routesLoaded).length
+    },
+    swagger: {
+      specGenerated: !!swaggerSpec,
+      pathCount: swaggerSpec?.paths ? Object.keys(swaggerSpec.paths).length : 0
+    },
+    endpoints: {
+      health: '/health',
+      docs: '/api-docs',
+      auth: '/api/auth',
+      users: '/api/users',
+      gymVisits: '/api/gym-visits',
+      groups: '/api/groups',
+      admin: '/api/admin'
+    }
   });
 });
 
