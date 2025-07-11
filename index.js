@@ -227,8 +227,10 @@ app.get('/api-docs', (req, res) => {
         <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
         <script>
           window.onload = function() {
+            const spec = ${JSON.stringify(swaggerSpec)};
+            
             const ui = SwaggerUIBundle({
-              url: '/api-docs.json',
+              spec: spec,
               dom_id: '#swagger-ui',
               deepLinking: true,
               presets: [
@@ -364,8 +366,10 @@ app.get('/api-docs-simple', (req, res) => {
         <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js"></script>
         <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
         <script>
+          const spec = ${JSON.stringify(swaggerSpec)};
+          
           SwaggerUIBundle({
-            url: '/api-docs-simple.json',
+            spec: spec,
             dom_id: '#swagger-ui',
             presets: [
               SwaggerUIBundle.presets.apis,
@@ -373,6 +377,81 @@ app.get('/api-docs-simple', (req, res) => {
             ]
           });
         </script>
+      </body>
+    </html>
+  `);
+});
+
+// Minimal test page for debugging Swagger UI issues
+app.get('/api-docs-test', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Swagger UI Debug Test</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
+        <style>
+          .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
+          .swagger-ui .topbar { display: none; }
+        </style>
+      </head>
+      <body>
+        <div class="debug">
+          <h2>Debug Information</h2>
+          <p><strong>Page loaded:</strong> <span id="pageLoaded">❌</span></p>
+          <p><strong>CSS loaded:</strong> <span id="cssLoaded">❌</span></p>
+          <p><strong>JS loaded:</strong> <span id="jsLoaded">❌</span></p>
+          <p><strong>Swagger spec loaded:</strong> <span id="specLoaded">❌</span></p>
+          <p><strong>Swagger UI rendered:</strong> <span id="uiRendered">❌</span></p>
+        </div>
+        
+        <div id="swagger-ui"></div>
+        
+        <script>
+          document.getElementById('pageLoaded').innerHTML = '✅';
+          
+          // Test CSS loading
+          const testEl = document.createElement('div');
+          testEl.className = 'swagger-ui';
+          document.body.appendChild(testEl);
+          const computed = getComputedStyle(testEl);
+          if (computed.fontFamily) {
+            document.getElementById('cssLoaded').innerHTML = '✅';
+          }
+          document.body.removeChild(testEl);
+        </script>
+        
+        <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-bundle.js" onload="
+          document.getElementById('jsLoaded').innerHTML = '✅';
+          
+          // Test spec loading
+          fetch('/api-docs.json')
+            .then(response => response.json())
+            .then(spec => {
+              document.getElementById('specLoaded').innerHTML = '✅';
+              
+              // Initialize Swagger UI
+              const ui = SwaggerUIBundle({
+                spec: spec,
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                  SwaggerUIBundle.presets.apis,
+                  SwaggerUIStandalonePreset
+                ],
+                layout: 'StandaloneLayout',
+                onComplete: () => {
+                  document.getElementById('uiRendered').innerHTML = '✅';
+                }
+              });
+            })
+            .catch(error => {
+              document.getElementById('specLoaded').innerHTML = '❌ ' + error.message;
+            });
+        " onerror="
+          document.getElementById('jsLoaded').innerHTML = '❌ Script failed to load';
+        "></script>
+        <script src="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui-standalone-preset.js"></script>
       </body>
     </html>
   `);
