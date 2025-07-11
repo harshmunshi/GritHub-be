@@ -138,12 +138,14 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const gymVisitRoutes = require('./routes/gym-visits');
 const groupRoutes = require('./routes/groups');
+const adminRoutes = require('./routes/admin');
 
 // Use routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/gym-visits', gymVisitRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/admin', adminRoutes);
 
 /**
  * @swagger

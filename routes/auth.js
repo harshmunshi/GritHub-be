@@ -5,6 +5,7 @@ const { body, validationResult } = require('express-validator');
 const { v4: uuidv4 } = require('uuid');
 const pool = require('../db');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
+const { logActivity, checkSuspiciousActivity, alertSuspiciousActivity } = require('../middleware/security');
 
 const router = express.Router();
 
@@ -255,6 +256,7 @@ router.post('/signin', [
     }
 
     const { email, password } = req.body;
+    const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
 
     // Find user
     const userQuery = `
@@ -266,6 +268,9 @@ router.post('/signin', [
     const userResult = await pool.query(userQuery, [email]);
 
     if (userResult.rows.length === 0) {
+      // Log failed login attempt
+      await logActivity(null, 'login_failed', `Failed login attempt for email: ${email}`, req, false);
+      
       return res.status(401).json({
         error: 'Invalid credentials',
         message: 'Invalid email or password.'
@@ -278,10 +283,25 @@ router.post('/signin', [
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     
     if (!isValidPassword) {
+      // Log failed login attempt
+      await logActivity(user.id, 'login_failed', `Failed login attempt with incorrect password`, req, false);
+      
+      // Check for suspicious activity
+      const suspiciousCheck = await checkSuspiciousActivity(user.id, 'login_failed', ip);
+      if (suspiciousCheck.suspicious) {
+        await alertSuspiciousActivity(user.id, suspiciousCheck.reason, req);
+      }
+      
       return res.status(401).json({
         error: 'Invalid credentials',
         message: 'Invalid email or password.'
       });
+    }
+
+    // Check for suspicious login activity
+    const suspiciousCheck = await checkSuspiciousActivity(user.id, 'login_success', ip);
+    if (suspiciousCheck.suspicious) {
+      await alertSuspiciousActivity(user.id, suspiciousCheck.reason, req);
     }
 
     // Create JWT token
@@ -304,6 +324,12 @@ router.post('/signin', [
     `;
     
     await pool.query(sessionQuery, [user.id, token]);
+
+    // Log successful login
+    await logActivity(user.id, 'login_success', 'User logged in successfully', req, true, {
+      sessionCreated: true,
+      userAgent: req.get('User-Agent')
+    });
 
     res.json({
       message: 'Sign in successful',
@@ -372,6 +398,9 @@ router.post('/signout', authenticateToken, async (req, res) => {
       'DELETE FROM user_sessions WHERE session_token = $1',
       [token]
     );
+
+    // Log the signout
+    await logActivity(req.user.id, 'logout', 'User logged out', req);
 
     res.json({
       message: 'Signed out successfully'
