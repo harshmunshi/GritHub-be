@@ -16,7 +16,30 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: [
+        "'self'", 
+        "'unsafe-inline'", // Allow inline styles for Swagger UI
+        "https://unpkg.com" // Allow Swagger UI CSS from CDN
+      ],
+      scriptSrc: [
+        "'self'", 
+        "'unsafe-inline'", // Allow inline scripts for Swagger UI
+        "https://unpkg.com" // Allow Swagger UI JS from CDN
+      ],
+      imgSrc: [
+        "'self'", 
+        "data:", 
+        "https://unpkg.com" // Allow Swagger UI images from CDN
+      ],
+      fontSrc: ["'self'", "https://unpkg.com"],
+      connectSrc: ["'self'"]
+    }
+  }
+})); // Security headers
 app.use(cors({
   origin: [
     'http://localhost:3000', 
