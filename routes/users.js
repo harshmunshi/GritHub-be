@@ -884,7 +884,7 @@ router.post('/password/reset-request', [
       resetToken: resetToken,
       resetUrl: process.env.FRONTEND_URL 
         ? `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`
-        : `gymtracker://reset-password?token=${resetToken}` // Deep link for mobile app
+        : `grithub://reset-password?token=${resetToken}` // Deep link for mobile app
     });
 
   } catch (error) {
@@ -1272,13 +1272,10 @@ router.put('/preferences', [
 
     if (updates.length === 0) {
       return res.status(400).json({
-        error: 'No updates provided',
-        message: 'No valid preference fields provided for update.'
+        error: 'No valid fields provided for update',
+        message: 'Please provide at least one valid field to update.'
       });
     }
-
-    updates.push(`updated_at = NOW()`);
-    values.push(req.user.id);
 
     const updateQuery = `
       UPDATE user_preferences 
@@ -1296,8 +1293,8 @@ router.put('/preferences', [
         theme_preference,
         updated_at
     `;
-
-    const result = await pool.query(updateQuery, values);
+    
+    const result = await pool.query(updateQuery, [...values, req.user.id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -1319,251 +1316,3 @@ router.put('/preferences', [
     });
   }
 });
-
-// Reset preferences to defaults
-router.post('/preferences/reset', authenticateToken, async (req, res) => {
-  try {
-    const resetQuery = `
-      UPDATE user_preferences 
-      SET 
-        weekly_goal = 3,
-        privacy_profile_visible = true,
-        privacy_stats_visible = true,
-        privacy_groups_visible = true,
-        notifications_gym_reminders = true,
-        notifications_streak_alerts = true,
-        notifications_group_updates = true,
-        notifications_leaderboard_updates = true,
-        theme_preference = 'system',
-        updated_at = NOW()
-      WHERE user_id = $1
-      RETURNING 
-        weekly_goal,
-        privacy_profile_visible,
-        privacy_stats_visible,
-        privacy_groups_visible,
-        notifications_gym_reminders,
-        notifications_streak_alerts,
-        notifications_group_updates,
-        notifications_leaderboard_updates,
-        theme_preference,
-        updated_at
-    `;
-
-    const result = await pool.query(resetQuery, [req.user.id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: 'Preferences not found',
-        message: 'User preferences not found.'
-      });
-    }
-
-    res.json({
-      message: 'Preferences reset to defaults successfully',
-      preferences: result.rows[0]
-    });
-
-  } catch (error) {
-    console.error('Reset preferences error:', error);
-    res.status(500).json({
-      error: 'Failed to reset preferences',
-      message: 'An error occurred while resetting your preferences.'
-    });
-  }
-});
-
-// Get user activity log
-router.get('/activity', [
-  authenticateToken,
-  query('limit')
-    .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage('Limit must be between 1 and 100')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        message: errors.array()[0].msg
-      });
-    }
-
-    const limit = parseInt(req.query.limit) || 50;
-    const activities = await getUserActivity(req.user.id, limit);
-
-    res.json({
-      activities: activities,
-      totalActivities: activities.length
-    });
-
-  } catch (error) {
-    console.error('Get activity error:', error);
-    res.status(500).json({
-      error: 'Failed to get activity',
-      message: 'An error occurred while retrieving your activity log.'
-    });
-  }
-});
-
-// Get security statistics
-router.get('/security/stats', authenticateToken, async (req, res) => {
-  try {
-    const stats = await getSecurityStats(req.user.id);
-
-    if (!stats) {
-      return res.status(500).json({
-        error: 'Failed to get security stats',
-        message: 'Unable to retrieve security statistics.'
-      });
-    }
-
-    res.json({
-      securityStats: {
-        totalActivities: parseInt(stats.total_activities) || 0,
-        failedActivities: parseInt(stats.failed_activities) || 0,
-        successfulLogins: parseInt(stats.logins) || 0,
-        passwordChanges: parseInt(stats.password_changes) || 0,
-        uniqueIpAddresses: parseInt(stats.unique_ips) || 0,
-        firstActivity: stats.first_activity,
-        lastActivity: stats.last_activity
-      }
-    });
-
-  } catch (error) {
-    console.error('Get security stats error:', error);
-    res.status(500).json({
-      error: 'Failed to get security statistics',
-      message: 'An error occurred while retrieving your security statistics.'
-    });
-  }
-});
-
-// Get security alerts
-router.get('/security/alerts', [
-  authenticateToken,
-  query('limit')
-    .optional()
-    .isInt({ min: 1, max: 50 })
-    .withMessage('Limit must be between 1 and 50')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        message: errors.array()[0].msg
-      });
-    }
-
-    const limit = parseInt(req.query.limit) || 20;
-
-    const alertsQuery = `
-      SELECT 
-        action,
-        description,
-        ip_address,
-        metadata,
-        created_at
-      FROM user_activity_logs 
-      WHERE user_id = $1 
-      AND action = 'security_alert'
-      ORDER BY created_at DESC 
-      LIMIT $2
-    `;
-
-    const result = await pool.query(alertsQuery, [req.user.id, limit]);
-
-    res.json({
-      alerts: result.rows,
-      totalAlerts: result.rows.length
-    });
-
-  } catch (error) {
-    console.error('Get security alerts error:', error);
-    res.status(500).json({
-      error: 'Failed to get security alerts',
-      message: 'An error occurred while retrieving your security alerts.'
-    });
-  }
-});
-
-// Clear security alerts
-router.delete('/security/alerts', authenticateToken, async (req, res) => {
-  try {
-    const deleteQuery = `
-      DELETE FROM user_activity_logs 
-      WHERE user_id = $1 AND action = 'security_alert'
-    `;
-
-    const result = await pool.query(deleteQuery, [req.user.id]);
-
-    // Log this action
-    await logActivity(req.user.id, 'security_alerts_cleared', 'User cleared all security alerts', req);
-
-    res.json({
-      message: 'Security alerts cleared successfully',
-      deletedAlerts: result.rowCount
-    });
-
-  } catch (error) {
-    console.error('Clear security alerts error:', error);
-    res.status(500).json({
-      error: 'Failed to clear security alerts',
-      message: 'An error occurred while clearing your security alerts.'
-    });
-  }
-});
-
-// Get login history
-router.get('/security/logins', [
-  authenticateToken,
-  query('limit')
-    .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage('Limit must be between 1 and 100')
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        message: errors.array()[0].msg
-      });
-    }
-
-    const limit = parseInt(req.query.limit) || 30;
-
-    const loginsQuery = `
-      SELECT 
-        action,
-        description,
-        ip_address,
-        user_agent,
-        success,
-        created_at
-      FROM user_activity_logs 
-      WHERE user_id = $1 
-      AND (action = 'login_success' OR action = 'login_failed')
-      ORDER BY created_at DESC 
-      LIMIT $2
-    `;
-
-    const result = await pool.query(loginsQuery, [req.user.id, limit]);
-
-    res.json({
-      loginHistory: result.rows,
-      totalLogins: result.rows.length
-    });
-
-  } catch (error) {
-    console.error('Get login history error:', error);
-    res.status(500).json({
-      error: 'Failed to get login history',
-      message: 'An error occurred while retrieving your login history.'
-    });
-  }
-});
-
-module.exports = router; 

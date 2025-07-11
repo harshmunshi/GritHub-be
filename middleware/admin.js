@@ -3,7 +3,7 @@ const { authenticateToken } = require('./auth');
 // For now, we'll use email-based admin check
 // In production, you'd want a proper role-based system
 const ADMIN_EMAILS = [
-  'admin@gymtracker.com',
+  'admin@grithub.com',
   // Add more admin emails here
 ];
 

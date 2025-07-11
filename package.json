@@ -1,7 +1,7 @@
 {
-  "name": "gymtracker-api",
+  "name": "grithub-api",
   "version": "1.0.0",
-  "description": "Backend API for GymTracker iOS app using NeonDB",
+  "description": "Backend API for GritHub iOS app using NeonDB",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -15,7 +15,7 @@
     "api",
     "neondb"
   ],
-  "author": "GymTracker Team",
+  "author": "GritHub Team",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",

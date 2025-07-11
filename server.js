@@ -46,12 +46,12 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'GymTracker API',
+      title: 'GritHub API',
       version: '1.0.0',
-      description: 'A comprehensive API for the GymTracker iOS app with user authentication and gym visit tracking',
+      description: 'A comprehensive API for the GritHub iOS app with user authentication and gym visit tracking',
       contact: {
-        name: 'GymTracker Team',
-        email: 'support@gymtracker.com'
+        name: 'GritHub Team',
+        email: 'support@grithub.com'
       },
     },
     servers: [
@@ -123,7 +123,7 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 // Serve Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'GymTracker API Documentation',
+  customSiteTitle: 'GritHub API Documentation',
   swaggerOptions: {
     persistAuthorization: true,
     tryItOutEnabled: true
@@ -167,7 +167,7 @@ app.use('/api/admin', adminRoutes);
  *                   example: OK
  *                 message:
  *                   type: string
- *                   example: GymTracker API is running
+ *                   example: GritHub API is running
  *                 timestamp:
  *                   type: string
  *                   format: date-time
@@ -178,7 +178,7 @@ app.use('/api/admin', adminRoutes);
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'GymTracker API is running',
+    message: 'GritHub API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -201,7 +201,7 @@ app.get('/health', (req, res) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Welcome to GymTracker API
+ *                   example: Welcome to GritHub API
  *                 version:
  *                   type: string
  *                   example: 1.0.0
@@ -213,7 +213,7 @@ app.get('/health', (req, res) => {
  */
 app.get('/', (req, res) => {
   res.json({
-    message: 'Welcome to GymTracker API',
+    message: 'Welcome to GritHub API',
     version: '1.0.0',
     documentation: '/api-docs',
     endpoints: {
@@ -222,7 +222,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       users: '/api/users',
       gymVisits: '/api/gym-visits',
-      groups: '/api/groups'
+      groups: '/api/groups',
+      admin: '/api/admin'
     }
   });
 });
@@ -294,10 +295,10 @@ process.on('SIGINT', async () => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 GymTracker API server running on port ${PORT}`);
+  console.log(`🚀 GritHub API server running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔗 API docs: http://localhost:${PORT}`);
+  console.log(`🔗 API docs: http://localhost:${PORT}/api-docs`);
 });
 
 // Export for testing
-module.exports = { app }; 
+module.exports = { app };

@@ -47,7 +47,7 @@ app.use(cors({
     'http://localhost',
     'capacitor://grithub-be.vercel.app',
     'https://grithub-be.vercel.app',
-    // Add your iOS app scheme here if you have one (e.g., 'gymtracker://')
+    // Add your iOS app scheme here if you have one (e.g., 'grithub://')
     ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
   ],
   credentials: true
@@ -95,12 +95,12 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'GymTracker API',
+      title: 'GritHub API',
       version: '1.0.0',
-      description: 'A comprehensive API for the GymTracker iOS app with user authentication and gym visit tracking',
+      description: 'A comprehensive API for the GritHub iOS app with user authentication and gym visit tracking',
       contact: {
-        name: 'GymTracker Team',
-        email: 'support@gymtracker.com'
+        name: 'GritHub Team',
+        email: 'support@grithub.com'
       },
     },
     servers: [
@@ -201,9 +201,9 @@ try {
   swaggerSpec = {
     openapi: '3.0.0',
     info: {
-      title: 'GymTracker API',
+      title: 'GritHub API',
       version: '1.0.0',
-      description: 'A comprehensive API for the GymTracker iOS app (minimal spec due to loading error)'
+      description: 'A comprehensive API for the GritHub iOS app (minimal spec due to loading error)'
     },
     servers: [
       {
@@ -234,7 +234,7 @@ app.get('/api-docs', (req, res) => {
     <html lang="en">
       <head>
         <meta charset="UTF-8">
-        <title>GymTracker API Documentation</title>
+        <title>GritHub API Documentation</title>
         <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
         <link rel="icon" type="image/png" href="https://unpkg.com/swagger-ui-dist@4.15.5/favicon-32x32.png" sizes="32x32" />
         <style>
@@ -332,9 +332,9 @@ app.get('/api-docs-simple.json', (req, res) => {
   const simpleSpec = {
     openapi: '3.0.0',
     info: {
-      title: 'GymTracker API',
+      title: 'GritHub API',
       version: '1.0.0',
-      description: 'A comprehensive API for the GymTracker iOS app'
+      description: 'A comprehensive API for the GritHub iOS app'
     },
     servers: [
       {
@@ -378,7 +378,7 @@ app.get('/api-docs-simple', (req, res) => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>GymTracker API Documentation (Simple)</title>
+        <title>GritHub API Documentation (Simple)</title>
         <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@4.15.5/swagger-ui.css" />
         <style>
           .swagger-ui .topbar { display: none; }
@@ -484,9 +484,9 @@ app.get('/api-docs-test', (req, res) => {
 app.get('/docs', (req, res) => {
   res.send(`
     <html>
-      <head><title>GymTracker API Documentation</title></head>
+      <head><title>GritHub API Documentation</title></head>
       <body style="font-family: Arial, sans-serif; padding: 20px;">
-        <h1>GymTracker API Documentation</h1>
+        <h1>GritHub API Documentation</h1>
         <p>API documentation is available at the following endpoints:</p>
         <ul>
           <li><a href="/api-docs/">/api-docs/</a> - Interactive Swagger UI</li>
@@ -580,7 +580,7 @@ app.get('/debug/routes', (req, res) => {
 app.get('/debug/status', (req, res) => {
   res.json({
     api: {
-      name: 'GymTracker API',
+      name: 'GritHub API',
       version: '1.0.0',
       status: 'running',
       timestamp: new Date().toISOString()
@@ -632,7 +632,7 @@ app.get('/debug/status', (req, res) => {
  *                   example: OK
  *                 message:
  *                   type: string
- *                   example: GymTracker API is running
+ *                   example: GritHub API is running
  *                 timestamp:
  *                   type: string
  *                   format: date-time
@@ -643,7 +643,7 @@ app.get('/debug/status', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
-    message: 'GymTracker API is running on Vercel',
+    message: 'GritHub API is running on Vercel',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     database: process.env.DATABASE_URL ? 'configured' : 'not configured',
@@ -675,7 +675,7 @@ app.get('/health', (req, res) => {
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Welcome to GymTracker API
+ *                   example: Welcome to GritHub API
  *                 version:
  *                   type: string
  *                   example: 1.0.0
@@ -687,7 +687,7 @@ app.get('/health', (req, res) => {
  */
 app.get('/', (req, res) => {
   res.json({
-    message: 'Welcome to GymTracker API',
+    message: 'Welcome to GritHub API',
     version: '1.0.0',
     documentation: '/api-docs',
     endpoints: {
