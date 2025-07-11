@@ -75,7 +75,7 @@ const swaggerOptions = {
     servers: [
       {
         url: process.env.NODE_ENV === 'production' 
-          ? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://your-vercel-app.vercel.app'
+          ? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://grithub-be.vercel.app'
           : 'http://localhost:3000',
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
@@ -117,6 +117,20 @@ const swaggerOptions = {
             createdAt: { type: 'string', format: 'date-time' }
           }
         },
+        UserPreferences: {
+          type: 'object',
+          properties: {
+            weekly_goal: { type: 'integer', minimum: 1, maximum: 7, example: 3 },
+            privacy_profile_visible: { type: 'boolean', example: true },
+            privacy_stats_visible: { type: 'boolean', example: true },
+            privacy_groups_visible: { type: 'boolean', example: true },
+            notifications_gym_reminders: { type: 'boolean', example: true },
+            notifications_streak_alerts: { type: 'boolean', example: true },
+            notifications_group_updates: { type: 'boolean', example: true },
+            notifications_leaderboard_updates: { type: 'boolean', example: true },
+            theme_preference: { type: 'string', enum: ['light', 'dark', 'system'], example: 'system' }
+          }
+        },
         Error: {
           type: 'object',
           properties: {
@@ -130,10 +144,19 @@ const swaggerOptions = {
       { name: 'Authentication', description: 'User authentication endpoints' },
       { name: 'Users', description: 'User management endpoints' },
       { name: 'Gym Visits', description: 'Gym visit tracking endpoints' },
-      { name: 'Groups', description: 'Group management and leaderboard endpoints' }
+      { name: 'Groups', description: 'Group management and leaderboard endpoints' },
+      { name: 'Admin', description: 'Administrative endpoints' }
     ]
   },
-  apis: ['./routes/*.js', './index.js'], // Path to the API docs
+  // Explicitly list route files for better Vercel compatibility
+  apis: [
+    './routes/auth.js',
+    './routes/users.js', 
+    './routes/gym-visits.js',
+    './routes/groups.js',
+    './routes/admin.js',
+    './index.js'
+  ]
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -176,6 +199,78 @@ app.get('/api-docs.json', (req, res) => {
   res.send(swaggerSpec);
 });
 
+// Fallback manual swagger spec for debugging
+app.get('/api-docs-simple.json', (req, res) => {
+  const simpleSpec = {
+    openapi: '3.0.0',
+    info: {
+      title: 'GymTracker API',
+      version: '1.0.0',
+      description: 'A comprehensive API for the GymTracker iOS app'
+    },
+    servers: [
+      {
+        url: 'https://grithub-be.vercel.app',
+        description: 'Production server'
+      }
+    ],
+    paths: {
+      '/health': {
+        get: {
+          summary: 'Health check',
+          tags: ['Health'],
+          responses: {
+            '200': {
+              description: 'API is healthy'
+            }
+          }
+        }
+      },
+      '/debug/routes': {
+        get: {
+          summary: 'Debug route loading status',
+          tags: ['Debug'],
+          responses: {
+            '200': {
+              description: 'Route status information'
+            }
+          }
+        }
+      }
+    }
+  };
+  
+  res.setHeader('Content-Type', 'application/json');
+  res.send(simpleSpec);
+});
+
+// Simple manual swagger UI for debugging
+app.get('/api-docs-simple', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>GymTracker API Documentation</title>
+        <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui.css" />
+      </head>
+      <body>
+        <div id="swagger-ui"></div>
+        <script src="https://unpkg.com/swagger-ui-dist@3.52.5/swagger-ui-bundle.js"></script>
+        <script>
+          SwaggerUIBundle({
+            url: '/api-docs-simple.json',
+            dom_id: '#swagger-ui',
+            presets: [
+              SwaggerUIBundle.presets.apis,
+              SwaggerUIBundle.presets.standalone
+            ]
+          });
+        </script>
+      </body>
+    </html>
+  `);
+});
+
 // Simple docs fallback
 app.get('/docs', (req, res) => {
   res.send(`
@@ -195,6 +290,7 @@ app.get('/docs', (req, res) => {
           <li><strong>Users:</strong> /api/users/*</li>
           <li><strong>Gym Visits:</strong> /api/gym-visits/*</li>
           <li><strong>Groups:</strong> /api/groups/*</li>
+          <li><strong>Admin:</strong> /api/admin/*</li>
         </ul>
       </body>
     </html>
@@ -205,21 +301,71 @@ app.get('/docs', (req, res) => {
 app.use('/api/auth', authLimiter);
 
 // Import route modules with error handling
+let routesLoaded = {
+  auth: false,
+  users: false,
+  gymVisits: false,
+  groups: false,
+  admin: false
+};
+
 try {
   const authRoutes = require('./routes/auth');
-  const userRoutes = require('./routes/users');
-  const gymVisitRoutes = require('./routes/gym-visits');
-  const groupRoutes = require('./routes/groups');
-
-  // Use routes
   app.use('/api/auth', authRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/gym-visits', gymVisitRoutes);
-  app.use('/api/groups', groupRoutes);
+  routesLoaded.auth = true;
+  console.log('✅ Auth routes loaded');
 } catch (error) {
-  console.error('❌ Error loading routes:', error.message);
-  // Continue without routes if there's an error
+  console.error('❌ Error loading auth routes:', error.message);
 }
+
+try {
+  const userRoutes = require('./routes/users');
+  app.use('/api/users', userRoutes);
+  routesLoaded.users = true;
+  console.log('✅ User routes loaded');
+} catch (error) {
+  console.error('❌ Error loading user routes:', error.message);
+}
+
+try {
+  const gymVisitRoutes = require('./routes/gym-visits');
+  app.use('/api/gym-visits', gymVisitRoutes);
+  routesLoaded.gymVisits = true;
+  console.log('✅ Gym visit routes loaded');
+} catch (error) {
+  console.error('❌ Error loading gym visit routes:', error.message);
+}
+
+try {
+  const groupRoutes = require('./routes/groups');
+  app.use('/api/groups', groupRoutes);
+  routesLoaded.groups = true;
+  console.log('✅ Group routes loaded');
+} catch (error) {
+  console.error('❌ Error loading group routes:', error.message);
+}
+
+try {
+  const adminRoutes = require('./routes/admin');
+  app.use('/api/admin', adminRoutes);
+  routesLoaded.admin = true;
+  console.log('✅ Admin routes loaded');
+} catch (error) {
+  console.error('❌ Error loading admin routes:', error.message);
+  console.error('Admin route error stack:', error.stack);
+}
+
+console.log('📊 Routes loaded status:', routesLoaded);
+
+// Debug endpoint to check routes status
+app.get('/debug/routes', (req, res) => {
+  res.json({
+    message: 'Route loading status',
+    routesLoaded: routesLoaded,
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
 
 /**
  * @swagger
@@ -305,7 +451,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       users: '/api/users',
       gymVisits: '/api/gym-visits',
-      groups: '/api/groups'
+      groups: '/api/groups',
+      admin: '/api/admin'
     },
     status: 'running',
     timestamp: new Date().toISOString()
@@ -323,7 +470,8 @@ app.use('*', (req, res) => {
       auth: '/api/auth',
       users: '/api/users',
       gymVisits: '/api/gym-visits',
-      groups: '/api/groups'
+      groups: '/api/groups',
+      admin: '/api/admin'
     }
   });
 });
